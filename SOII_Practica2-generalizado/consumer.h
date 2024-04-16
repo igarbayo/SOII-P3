@@ -9,10 +9,11 @@
 #include <pthread.h>
 #include <fcntl.h>
 #include <stdlib.h>
+#include <pthread.h>
 #include "data.h"
 
 
-void consumer(mem_shared *mem_map);
+void* consumer();
 
 
 #endif //SOII_PRACTICA2_CONSUMER_H

@@ -9,16 +9,18 @@
 #include <sys/mman.h>
 #include <pthread.h>
 #include <fcntl.h>
+#include <pthread.h>
+#include <sys/time.h>
 #include "time.h"
 #include "data.h"
-#include <sys/time.h>
+
 
 
 #define get_rand() ((int)rand()%11)
 
 
 
-void producer(mem_shared *mem_map); /* Ya no hace falta pasarle el tamaño, está declarado aquí */
+void* producer(); /* Ya no hace falta pasarle el tamaño, está declarado aquí */
 
 
 

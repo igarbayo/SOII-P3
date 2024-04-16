@@ -1,100 +1,71 @@
 #include "consumer.h"
 #include "producer.h"
 #include <sys/mman.h>
+#include <stdlib.h>
+#include <pthread.h>
 
 
-#define N 8
-
+mem_shared * mem_map; // Memoria compartida con el mutex y los cond_t
 
 int main(int argc, char** argv) {
-    mem_shared * mem_map;
-    pid_t child;
-    int n_processes, j;
+    pthread_t consumer_ids[C]; // Array con los ids de los consumidores
+    pthread_t producer_ids[P]; // Array con los ids de los productores
+    int i, j;
 
+    /* Inicializamos la estructura con el buffer */
+    mem_map = (mem_shared*) malloc (sizeof(mem_shared));
+    mem_map->count=0;
 
-    if (argc != 2){
-            printf("Número de argumentos incorrecto: %s <número de procesos>", argv[0]);
-            exit(1);
+    /* Inicializamos el buffer a -1 */
+    for (i=0; i<N; i++) {
+        mem_map->buffer[i]=-1;
     }
 
-    /* Unlink de los semáforos */
+    /* Inicialización de mutex y variables de condición */
+    pthread_mutex_init(&mem_map->mutex, 0);
 
-    sem_unlink("empty");
-    sem_unlink("mutex");
-    sem_unlink("full");
+    pthread_cond_init(&mem_map->cond_consumer, 0);
 
-    n_processes = atoi(argv[1]); 
+    pthread_cond_init(&mem_map->cond_producer, 0);
 
-
-    if((mem_map = (mem_shared*)mmap(NULL, sizeof(mem_shared), PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0)) == MAP_FAILED){/* Proyectamos en memoria el archivo a escribir */
-        fprintf(stderr, "Error al hacer mmap\n");
-        exit(EXIT_FAILURE);
+    /* Inicilizamos el vector T */
+    for(i = 0; i < TAM; i++){
+        mem_map->T[i] = (int) i/2; // El cast redondea a la baja
     }
-
-
-
-    /* Inicializamos los semáforos */
-    mem_map->empty = sem_open("empty", O_CREAT, 0700, N);
-    mem_map->mutex = sem_open("mutex", O_CREAT, 0700, 1);
-    mem_map->full = sem_open("full", O_CREAT, 0700, 0);
-
 
     /* Crear consumidores */
-    for (j = 0; j < n_processes; j++){
-        if(fork() == 0){
-
-            mem_map->empty = sem_open("empty",0);
-            mem_map->mutex = sem_open("mutex",0);
-            mem_map->full = sem_open("full",0);
-
-            consumer(mem_map);
-
-
-            printf("\n Proceso CONSUMIDOR [%d] acabando...\n", getpid());
-
-            /* Cerramos los semáforos */
-            sem_close(mem_map->empty);
-            sem_close(mem_map->mutex);
-            sem_close(mem_map->full);
-
-            /* Liberamos la proyección de memoria */
-            if(munmap(mem_map, sizeof(mem_shared))) printf("Error liberando memoria compartida\n");
-
-            /* Unlink de los semáforos */
-            sem_unlink("empty");
-            sem_unlink("mutex");
-            sem_unlink("full");
-            exit(EXIT_SUCCESS);
+    for (j = 0; j < C; j++){
+        if((pthread_create(&consumer_ids[j], NULL, consumer, NULL)) != 0){
+            printf("Error creando el hilo consumidor %d\n", j);
         }
+        //printf("\n Proceso CONSUMIDOR [%d] acabando...\n", getpid());
     }
 
     /* Crear productores */
-    for (j = 0; j < n_processes; j++){
-        if(fork() == 0){
-
-            mem_map->empty = sem_open("empty",0);
-            mem_map->mutex = sem_open("mutex",0);
-            mem_map->full = sem_open("full",0);
-
-            producer(mem_map);
-
-            printf("\n Proceso PRODUCTOR [%d] acabando...\n", getpid());
-
-            /* Cerramos los semáforos */
-            sem_close(mem_map->empty);
-            sem_close(mem_map->mutex);
-            sem_close(mem_map->full);
-
-            /* Liberamos la proyección de memoria */
-            if(munmap(mem_map, sizeof(mem_shared))) printf("Error liberando memoria compartida\n");
-
-            /* Unlink de los semáforos */
-            sem_unlink("empty");
-            sem_unlink("mutex");
-            sem_unlink("full");
-            exit(EXIT_SUCCESS);
+    for (j = 0; j < P; j++){
+        if((pthread_create(&producer_ids[j], NULL, producer, NULL)) != 0){
+            printf("Error creando el hilo productor %d\n", j);
         }
+        //printf("\n Proceso PRODUCTOR [%d] acabando...\n", getpid());
     }
+
+    /* Esperamos a que acaben los consumidores */
+    for (j=0; j<C; j++) {
+        pthread_join(consumer_ids[j], NULL);
+    }
+
+    /* Esperamos a que acaben los productores */
+    for (j=0; j<P; j++) {
+        pthread_join(producer_ids[j], NULL);
+    }
+
+    /* Cierre de mutex y variables de condición */
+    pthread_cond_destroy(&mem_map->cond_consumer);
+    pthread_cond_destroy(&mem_map->cond_producer);
+    pthread_mutex_destroy(&mem_map->mutex);
+
+    /* Liberamos la proyección de memoria */
+    free(mem_map);
 
     return 0;
 }

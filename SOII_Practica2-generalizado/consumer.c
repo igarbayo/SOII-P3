@@ -1,24 +1,21 @@
+
 #include "consumer.h"
 
-
-int remove_item(mem_shared* mem_map, int* sum){
-    int i, item, count;
-
-    /* Calculamos count a partir de empty, que está actualizado, en vez de full*/
-    sem_getvalue(mem_map->empty, &count);
-    count = (N-1)-count;
+extern mem_shared * mem_map;
 
 
-    item = mem_map->buffer[count];
-    // mem_map->buffer[mem_map->count]=-17; //Indicamos valor no válido
-    //item = mem_map[mem_map[0] + 1];
+int remove_item(int* sum){
+    int i, item;
+
+    item = mem_map->buffer[mem_map->count-1];
 
     *sum = item;
-    for(i=0; i<count; i++) *sum += mem_map->buffer[i]; // Sumamos todos menos el que hemos eliminado
+    for(i=0; i<mem_map->count-1; i++) *sum += mem_map->buffer[i]; // Sumamos todos menos el que hemos eliminado
  
-    mem_map->buffer[count] = -1;
+    mem_map->buffer[mem_map->count-1] = -1; // Marcamos como eliminado el elemento
+    mem_map->count--;
 
-    printf("Buffer(CONSUMIDOR : %d): | %d | %d | %d | %d | %d | %d | %d | %d |\n", getpid(), mem_map->buffer[0], mem_map->buffer[1], mem_map->buffer[2], mem_map->buffer[3],
+    printf("Buffer(CONSUMIDOR : %d):\t| %d | %d | %d | %d | %d | %d | %d | %d |\n", (int)pthread_self(), mem_map->buffer[0], mem_map->buffer[1], mem_map->buffer[2], mem_map->buffer[3],
            mem_map->buffer[4], mem_map->buffer[5],mem_map->buffer[6], mem_map->buffer[7]);
 
     return item;
@@ -29,19 +26,20 @@ void consume_item(int item, int sum){
 }
 
 
-void consumer(mem_shared *mem_map){
+void* consumer(){
     int i=0;
-    int item, sum=0;
+    int sum=0;
+    int item=0;
 
     while(i<BUC){
 
         /* Metemos un sleep fuera de la región crítica */
         sleep(rand()%3);
-        sem_wait(mem_map->full);
-        sem_wait(mem_map->mutex);
-        item = remove_item(mem_map, &sum);
-        sem_post(mem_map->mutex);
-        sem_post(mem_map->empty);
+        pthread_mutex_lock(&mem_map->mutex);         // Obtiene acceso exclusivo al buffer
+        while(mem_map->count ==0) pthread_cond_wait(&mem_map->cond_consumer, &mem_map->mutex); //Mientras el buffer esté vacío, bloquéate. NOTA: PONER POR QUÉ SE PSA MUTEX
+        item = remove_item(&sum);         // Elimina un elemento
+        pthread_cond_signal(&mem_map->cond_producer);    // Despierta al productor
+        pthread_mutex_unlock(&mem_map->mutex);       // Libera el acceso al buffer
         consume_item(item, sum);
 
         i++;
