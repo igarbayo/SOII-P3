@@ -4,7 +4,24 @@
 extern mem_shared * mem_map;
 
 
-int remove_item(int* sum){
+void print_bufferc(int id);
+
+
+void contribute_consumer(){
+    int i, lim;
+
+    /* Limite del bucle */
+    lim = mem_map->index_even_sum + ((rand()%3)+2);
+    i=mem_map->index_even_sum;
+
+    for(i; i < lim && i < TAM; i += 2){
+        mem_map->even_sum += mem_map->T[i];
+    }
+    /* Actualizamos el índice de indexado */
+    mem_map->index_even_sum = i;
+}
+
+int remove_item(int* sum, int id){
     int i, item;
 
     item = mem_map->buffer[mem_map->count-1];
@@ -15,33 +32,72 @@ int remove_item(int* sum){
     mem_map->buffer[mem_map->count-1] = -1; // Marcamos como eliminado el elemento
     mem_map->count--;
 
-    printf("Buffer(CONSUMIDOR : %d):\t| %d | %d | %d | %d | %d | %d | %d | %d |\n", (int)pthread_self(), mem_map->buffer[0], mem_map->buffer[1], mem_map->buffer[2], mem_map->buffer[3],
-           mem_map->buffer[4], mem_map->buffer[5],mem_map->buffer[6], mem_map->buffer[7]);
+    /* Printeamos el buffer para constatar posibles carreras críticas */
+    print_bufferc(id);
 
     return item;
 }
 
-void consume_item(int item, int sum){
+void consume_item(int item, int sum, int id){
     printf("(%d) Item extraído:\t %d\t Suma: %d\n",getpid(), item, sum);
 }
 
 
-void* consumer(){
+void* consumer(void* args){
     int i=0;
     int sum=0;
     int item=0;
+    int theoretical_even_sum;
 
-    while(i<BUC){
+    /* Recogemos los argumentos*/
+    int id = (int)args;
+
+
+
+
+    while(i < BUC_CONS){
 
         /* Metemos un sleep fuera de la región crítica */
-        sleep(rand()%3);
+        usleep(rand()%3);
         pthread_mutex_lock(&mem_map->mutex);         // Obtiene acceso exclusivo al buffer
-        while(mem_map->count ==0) pthread_cond_wait(&mem_map->cond_consumer, &mem_map->mutex); //Mientras el buffer esté vacío, bloquéate. NOTA: PONER POR QUÉ SE PSA MUTEX
-        item = remove_item(&sum);         // Elimina un elemento
+        while(mem_map->count == 0) pthread_cond_wait(&mem_map->cond_consumer, &mem_map->mutex); //Si el buffer esté vacío, bloquéate. NOTA: PONER POR QUÉ SE PSA MUTEX
+        item = remove_item(&sum, id);         // Elimina un elemento
+
+        /* Si no hay otro hilo en la región crítica, entra */
+        if((pthread_mutex_trylock(&mem_map->mutex_even_sum)) == 0){
+            contribute_consumer();
+            /* Cuando termines de contribuir sal de la región crítica */
+            pthread_mutex_unlock(&mem_map->mutex_even_sum); /* Cuando termines de contribuir sal de la región crítica */
+        }
         pthread_cond_signal(&mem_map->cond_producer);    // Despierta al productor
         pthread_mutex_unlock(&mem_map->mutex);       // Libera el acceso al buffer
-        consume_item(item, sum);
+        consume_item(item, sum, id);
 
         i++;
     }
+
+
+
+    do{
+        /* Si no hay otro hilo en la región crítica, entra */
+        if((pthread_mutex_trylock(&mem_map->mutex_even_sum)) == 0){
+            contribute_consumer();
+            /* Cuando termines de contribuir sal de la región crítica */
+            pthread_mutex_unlock(&mem_map->mutex_even_sum);
+
+        }
+
+        // printf("Suma pares: %d \t %d\n", mem_map->even_sum, mem_map->theoretical_even_sum);
+    }while(mem_map->index_even_sum < TAM); /* Mientras no se haya terminado la suma de los pares */
+
+
+}
+
+
+void print_bufferc (int id) {
+    printf("Buffer (CONSUMIDOR = %d):\t ", id);
+    for (int i=0; i<N; i++) {
+        (mem_map->buffer[i]==-1) ? printf("| - ") : printf("| %d ", mem_map->buffer[i]);
+    }
+    printf("|\tSuma pares   = %d\n", mem_map->even_sum);
 }

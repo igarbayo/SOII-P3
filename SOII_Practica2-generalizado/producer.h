@@ -16,11 +16,11 @@
 
 
 
-#define get_rand() ((int)rand()%11)
+#define get_rand() ((int)rand()%10)
 
 
 
-void* producer(); /* Ya no hace falta pasarle el tamaño, está declarado aquí */
+void* producer(void* args); /* Ya no hace falta pasarle el tamaño, está declarado aquí */
 
 
 

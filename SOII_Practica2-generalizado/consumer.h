@@ -13,7 +13,7 @@
 #include "data.h"
 
 
-void* consumer();
+void* consumer(void* args);
 
 
 #endif //SOII_PRACTICA2_CONSUMER_H
