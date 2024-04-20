@@ -15,7 +15,7 @@ int trabajoC;         // Cuenta el número de veces que los consumidores se qued
 int main(int argc, char** argv) {
     pthread_t consumer_ids[C]; // Array con los ids de los consumidores
     pthread_t producer_ids[P]; // Array con los ids de los productores
-    int i=0, j, k;
+    int i, j, k;
     int sum_truth=0;
 
     trabajoP=0;
@@ -39,16 +39,13 @@ int main(int argc, char** argv) {
     /* Inicializamos la estructura con el buffer */
     mem_map = (mem_shared*) malloc (sizeof(mem_shared));
 
-    //mem_map->BUC_CONS = (int) (P * BUC_PROD) / C;
-    //mem_map->BUC_CONS++; /* Sumamos una iteración más ya que el casteo redondea a la baja */
-
-    // Cuenta a 0
+    /* Cuenta a 0 */
     mem_map->count=0;
 
-    // Para que sume pares = odd
+    /* Para que sume impares = odd */
     mem_map->index_odd_sum = 1;
 
-    // Para que sume impares = even
+    /* Para que sume pares = even */
     mem_map->index_even_sum = 0;
 
     /* Inicializamos el buffer a -1 */
@@ -62,7 +59,6 @@ int main(int argc, char** argv) {
     pthread_mutex_init(&mem_map->mutex_odd_sum, 0);
 
     pthread_cond_init(&mem_map->cond_consumer, 0);
-
     pthread_cond_init(&mem_map->cond_producer, 0);
 
     /* Inicilizamos el vector T */
@@ -78,7 +74,6 @@ int main(int argc, char** argv) {
         if((pthread_create(&consumer_ids[j], NULL, consumer, (void*) j)) != 0){
             printf("Error creando el hilo consumidor %d\n", j);
         }
-        //printf("\n Proceso CONSUMIDOR [%d] acabando...\n", getpid());
     }
 
     /* Crear productores */
@@ -86,11 +81,9 @@ int main(int argc, char** argv) {
         if((pthread_create(&producer_ids[j], NULL, producer, (void*) j)) != 0){
             printf("Error creando el hilo productor %d\n", j);
         }
-        //printf("\n Proceso PRODUCTOR [%d] acabando...\n", getpid());
     }
 
     /* Esperamos a que acaben  de producir los productores. Cuando el i-ésimo productor termina de producir: mem_map->flag[i] == 1 */
-    i=0;
     for (i=0; i<P; i++) {
         do{
             if(mem_map->flag[i] == 1) break; /* Si el hilo i ha marcado la flag, pasamos a comprobar si el siguiente hilo productor ha terminado de producir */

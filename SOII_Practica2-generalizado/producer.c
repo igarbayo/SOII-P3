@@ -15,7 +15,7 @@ void contribute_producer(){
 
     usleep(sleepValues[2]);
 
-    for(i; i < lim && i < TAM; i += 2){
+    for(; i < lim && i < TAM; i += 2){
         mem_map->even_sum += mem_map->T[i];
     }
     /* Actualizamos el índice de indexado */
@@ -59,28 +59,27 @@ void* producer(void* args){
         usleep(rand()%3);
 
         item = produce_item(); /* Producimos un entero aleatorio entre 0 y 10 */
-        pthread_mutex_lock(&mem_map->mutex);
-        while(mem_map->count == N) {
-            pthread_cond_wait(&mem_map->cond_producer, &mem_map->mutex); // Si esté lleno.
+        pthread_mutex_lock(&mem_map->mutex); /* Bloqueamos el mutex */
+        while(mem_map->count == N) { /* Mientras esté lleno */
+            pthread_cond_wait(&mem_map->cond_producer, &mem_map->mutex);
             trabajoP++;
         }
-        insert_item(item, id); /* insertamos el item en el buffer */
+        insert_item(item, id); /* Insertamos el item en el buffer */
 
         /* Si no hay otro hilo en la región crítica, entra */
         if((pthread_mutex_trylock(&mem_map->mutex_even_sum)) == 0){
             contribute_producer();
             /* Cuando termines de contribuir sal de la región crítica */
-            pthread_mutex_unlock(&mem_map->mutex_even_sum); /* Cuando termines de contribuir sal de la región crítica */
+            pthread_mutex_unlock(&mem_map->mutex_even_sum);
         }
 
-        pthread_cond_signal(&mem_map->cond_consumer);
-        pthread_mutex_unlock(&mem_map->mutex);
+        pthread_cond_signal(&mem_map->cond_consumer); /* Desbloqueamos a algún consumidor bloqueado */
+        pthread_mutex_unlock(&mem_map->mutex); /* Liberamos el mutex */
 
         i++; /* Aumentamos el contador */
     }
 
     mem_map->flag[id] = 1; /* Indicamos a través de la flag que el hilo i-ésimo a terminado de producir */
-    printf("Soy el Productor %d y he acabado de producir\n", id);
 
     do{
         /* Si no hay otro hilo en la región crítica, entra */
@@ -91,7 +90,7 @@ void* producer(void* args){
         }
     }while(mem_map->index_even_sum < TAM);
 
-    printf("Soy el Productor %d y he acabado de contribuir\n", id);
+    printf("Soy el Productor %d y he acabado de contribuir. Valor suma pares:\t%d\n", id, mem_map->even_sum);
 
 }
 

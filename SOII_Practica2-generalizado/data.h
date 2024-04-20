@@ -3,12 +3,12 @@
 
 
 
-#define N 12
-#define BUC_PROD 18
-#define BUC_CONS ((int) (P * BUC_PROD) / C) /* Número de iteraciones por productor */
-#define P 8
-#define C 6
-#define TAM 110*(P+C) // Tamaño del buffer T
+#define N 12 /* Número de elementos del buffer */
+#define BUC_PROD 18 /*Número de iteraciones del productor */
+#define BUC_CONS ((int) (P * BUC_PROD) / C) /* Número de iteraciones del consumidor */
+#define P 8 /* Número de productores */
+#define C 6 /* Número de consumidores */
+#define TAM 110*(P+C) /* Tamaño del buffer T */
 
 
 typedef struct{
