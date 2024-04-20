@@ -15,12 +15,14 @@ int trabajoC;         // Cuenta el número de veces que los consumidores se qued
 int main(int argc, char** argv) {
     pthread_t consumer_ids[C]; // Array con los ids de los consumidores
     pthread_t producer_ids[P]; // Array con los ids de los productores
-    int i=0, j, k;
+    int i, j, k;
     int sum_truth=0;
 
+    /* Inicializamos variables de trabajo a 0 */
     trabajoP=0;
     trabajoC=0;
 
+    /* Procesamos los argumentos del programa */
     if (argc != 7) {
         fprintf(stderr, "Error: debe incluir 6 argumentos para los sleep:\n"
                        "    · Producción item\n"                            // argv[1] = sleepValues[0]
@@ -32,43 +34,45 @@ int main(int argc, char** argv) {
         exit(EXIT_FAILURE);
     }
 
+
     for (k=0; k<6; k++) {
         sleepValues[k]=atoi(argv[k+1]);
     }
 
+    /* Unlink de los posibles semáforos */
+    sem_unlink("empty");
+    sem_unlink("full");
+
     /* Inicializamos la estructura con el buffer */
     mem_map = (mem_shared*) malloc (sizeof(mem_shared));
 
-    //mem_map->BUC_CONS = (int) (P * BUC_PROD) / C;
-    //mem_map->BUC_CONS++; /* Sumamos una iteración más ya que el casteo redondea a la baja */
+    /* Inicializamos los semáforos */
+    mem_map->empty = sem_open("empty", O_CREAT, 0700, N);
+    mem_map->full = sem_open("full", O_CREAT, 0700, 0);
 
-    // Cuenta a 0
+    /* Cuenta a 0 para indexar de forma correcta en el buffer */
     mem_map->count=0;
 
-    // Para que sume pares = odd
+    /* Para que sume impares = odd */
     mem_map->index_odd_sum = 1;
 
-    // Para que sume impares = even
+    /* Para que sume pares = even */
     mem_map->index_even_sum = 0;
 
-    /* Inicializamos el buffer a -1 */
+    /* Inicializamos el buffer a -1 para indicar posiciones vacías */
     for (i=0; i<N; i++) {
         mem_map->buffer[i]=-1;
     }
 
-    /* Inicialización de mutex y variables de condición */
+    /* Inicialización de mutex */
     pthread_mutex_init(&mem_map->mutex, 0);
     pthread_mutex_init(&mem_map->mutex_even_sum, 0);
     pthread_mutex_init(&mem_map->mutex_odd_sum, 0);
 
-    pthread_cond_init(&mem_map->cond_consumer, 0);
-
-    pthread_cond_init(&mem_map->cond_producer, 0);
-
     /* Inicilizamos el vector T */
     for(i = 0; i < TAM; i++){
-        mem_map->T[i] = (int) i/2; // El cast redondea a la baja
-        sum_truth += mem_map->T[i];
+        mem_map->T[i] = (int) i/2; /* El cast redondea a la baja */
+        sum_truth += mem_map->T[i]; /* Calculamos en el hilo principal la suma */
     }
 
     printf("Suma verdadera: %d\n", sum_truth);
@@ -78,7 +82,6 @@ int main(int argc, char** argv) {
         if((pthread_create(&consumer_ids[j], NULL, consumer, (void*) j)) != 0){
             printf("Error creando el hilo consumidor %d\n", j);
         }
-        //printf("\n Proceso CONSUMIDOR [%d] acabando...\n", getpid());
     }
 
     /* Crear productores */
@@ -86,21 +89,7 @@ int main(int argc, char** argv) {
         if((pthread_create(&producer_ids[j], NULL, producer, (void*) j)) != 0){
             printf("Error creando el hilo productor %d\n", j);
         }
-        //printf("\n Proceso PRODUCTOR [%d] acabando...\n", getpid());
     }
-
-    /* Esperamos a que acaben  de producir los productores. Cuando el i-ésimo productor termina de producir: mem_map->flag[i] == 1 */
-    i=0;
-    for (i=0; i<P; i++) {
-        do{
-            if(mem_map->flag[i] == 1) break; /* Si el hilo i ha marcado la flag, pasamos a comprobar si el siguiente hilo productor ha terminado de producir */
-        }while(mem_map->flag[i] == 0);
-    }
-
-    printf("Los productores han terminado de producir\n");
-
-    /* Liberemos todos los consumidores que puedan estar bloqueados */
-     pthread_cond_broadcast(&mem_map->cond_consumer);
 
     /* Esperamos a que acaben los productores */
     for (j=0; j<P; j++) {
@@ -121,13 +110,17 @@ int main(int argc, char** argv) {
 
     (trabajoP>trabajoC) ? printf("Han trabajado más los consumidores\n") : printf("Han trabajado más los productores\n");
 
-    /* Cierre de mutex y variables de condición */
-    pthread_cond_destroy(&mem_map->cond_consumer);
-    pthread_cond_destroy(&mem_map->cond_producer);
+    /* Cierre de mutex y los semáforos */
+    sem_close(mem_map->empty);
+    sem_close(mem_map->full);
     pthread_mutex_destroy(&mem_map->mutex);
 
     /* Liberamos la proyección de memoria */
     free(mem_map);
+
+    /* Unlink de los semáforos */
+    sem_unlink("empty");
+    sem_unlink("full");
 
     return 0;
 }

@@ -11,6 +11,7 @@
 #include <fcntl.h>
 #include <pthread.h>
 #include <sys/time.h>
+#include <semaphore.h>
 #include "time.h"
 #include "data.h"
 

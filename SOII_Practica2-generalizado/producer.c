@@ -57,11 +57,11 @@ void* producer(void* args){
 
         /* Metemos un sleep fuera de la región crítica */
         usleep(rand()%3);
-
         item = produce_item(); /* Producimos un entero aleatorio entre 0 y 10 */
-        pthread_mutex_lock(&mem_map->mutex);
+        sem_wait(mem_map->empty); /* Down al semáforo empty. Si está lleno, se bloquea antes de bloquear el mutex */
+        pthread_mutex_lock(&mem_map->mutex); /* Obtiene acceso exclusivo al buffer  */
+
         while(mem_map->count == N) {
-            pthread_cond_wait(&mem_map->cond_producer, &mem_map->mutex); // Si esté lleno.
             trabajoP++;
         }
         insert_item(item, id); /* insertamos el item en el buffer */
@@ -69,12 +69,11 @@ void* producer(void* args){
         /* Si no hay otro hilo en la región crítica, entra */
         if((pthread_mutex_trylock(&mem_map->mutex_even_sum)) == 0){
             contribute_producer();
-            /* Cuando termines de contribuir sal de la región crítica */
             pthread_mutex_unlock(&mem_map->mutex_even_sum); /* Cuando termines de contribuir sal de la región crítica */
         }
 
-        pthread_cond_signal(&mem_map->cond_consumer);
         pthread_mutex_unlock(&mem_map->mutex);
+        sem_post(mem_map->full); /* Up al semáforo full. Marcamos que ha insertado un elemento */
 
         i++; /* Aumentamos el contador */
     }
@@ -91,7 +90,7 @@ void* producer(void* args){
         }
     }while(mem_map->index_even_sum < TAM);
 
-    printf("Soy el Productor %d y he acabado de contribuir\n", id);
+    printf("Soy el Productor %d y he acabado de contribuir. Valor suma pares:\t%d\n", id, mem_map->even_sum);
 
 }
 
