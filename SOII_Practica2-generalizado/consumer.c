@@ -35,6 +35,7 @@ int remove_item(int* sum, int id){
  
     mem_map->buffer[mem_map->count-1] = -1; // Marcamos como eliminado el elemento
     mem_map->count--;
+    mem_map->not_finish--; /* Reducimos el número de elementos totales a consumir */
 
     /* Printeamos el buffer para constatar posibles carreras críticas */
     print_bufferc(id);
@@ -49,25 +50,31 @@ void consume_item(int item, int sum, int id){
 
 
 void* consumer(void* args){
-    int i=0;
     int sum=0;
     int item;
+    int i;
 
     /* Recogemos los argumentos*/
     int id = (int)args;
 
-    while(i < BUC_CONS){
+    while(mem_map->not_finish != 0){
 
         /* Metemos un sleep fuera de la región crítica */
         usleep(rand()%3);
+
+        /* Contamos lo equivalente antes de bloquearnos */
+        if(mem_map->count == 0)
+            trabajoC++;
+
         sem_wait(mem_map->full); /* Down a full. Si esta vacío, se bloquea antes de bloquear el mutex. */
         pthread_mutex_lock(&mem_map->mutex); /* Obtiene acceso exclusivo al buffer */
 
-        while(mem_map->count == 0) {
-            trabajoC++;
-        }
+       // while(mem_map->count == 0 && mem_map->not_finish != 0) {
+        //    trabajoC++;
+       // }
 
-        item = remove_item(&sum, id); /* Elimina un elemento */
+        if(mem_map->not_finish != 0)
+            item = remove_item(&sum, id); /* Elimina un elemento */
 
         /* Si no hay otro hilo en la región crítica, entra */
         if((pthread_mutex_trylock(&mem_map->mutex_odd_sum)) == 0){
@@ -77,14 +84,22 @@ void* consumer(void* args){
         }
 
         pthread_mutex_unlock(&mem_map->mutex); /* Libera el acceso al buffer */
+
+        /* Si no quedan elementos por consumir, sal antes de quedarte bloqueado en el empty*/
+       // if(mem_map->not_finish == 0){
+         //   printf("Soy el hilo %d y voy a ejecutar el break\n", id);
+          //  break;
+       // }
+
         sem_post(mem_map->empty); /* Up de empty. Marcamos que hemos consumido un elemento */
 
         consume_item(item, sum, id);
 
-        i++;
     }
 
-    printf("Soy el Consumidor %d y he acabado de consumir\n", id);
+    /* Hacemos lo equivalente a un broadcast -> C-1 ups realizados por el primer consumidor que termina*/
+    for(i=0;i<C-1;i++)
+        sem_post(mem_map->full);
 
     do{
         /* Si no hay otro hilo en la región crítica, entra */

@@ -58,12 +58,15 @@ void* producer(void* args){
         /* Metemos un sleep fuera de la región crítica */
         usleep(rand()%3);
         item = produce_item(); /* Producimos un entero aleatorio entre 0 y 10 */
+
+        /* Contamos lo equivalente antes de bloquearnos */
+        if(mem_map->count == N)
+            trabajoP++;
+
         sem_wait(mem_map->empty); /* Down al semáforo empty. Si está lleno, se bloquea antes de bloquear el mutex */
         pthread_mutex_lock(&mem_map->mutex); /* Obtiene acceso exclusivo al buffer  */
 
-        while(mem_map->count == N) {
-            trabajoP++;
-        }
+
         insert_item(item, id); /* insertamos el item en el buffer */
 
         /* Si no hay otro hilo en la región crítica, entra */
@@ -77,9 +80,6 @@ void* producer(void* args){
 
         i++; /* Aumentamos el contador */
     }
-
-    mem_map->flag[id] = 1; /* Indicamos a través de la flag que el hilo i-ésimo a terminado de producir */
-    printf("Soy el Productor %d y he acabado de producir\n", id);
 
     do{
         /* Si no hay otro hilo en la región crítica, entra */

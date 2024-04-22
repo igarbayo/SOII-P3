@@ -53,6 +53,9 @@ int main(int argc, char** argv) {
     /* Cuenta a 0 para indexar de forma correcta en el buffer */
     mem_map->count=0;
 
+    /* Número de items que se producirán en total */
+    mem_map->not_finish = P * BUC_PROD;
+
     /* Para que sume impares = odd */
     mem_map->index_odd_sum = 1;
 
