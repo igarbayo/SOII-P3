@@ -4,7 +4,6 @@
 
 #define N 12 					/* Número de elementos del buffer */
 #define BUC_PROD 18 				/*Número de iteraciones del productor */
-#define BUC_CONS ((int) (P * BUC_PROD) / C) 	/* Número de iteraciones del consumidor */
 #define P 8 					/* Número de productores */
 #define C 6 					/* Número de consumidores */
 #define TAM 110*(P+C) 				/* Tamaño del buffer T */
@@ -19,6 +18,7 @@ typedef struct{
     int index_odd_sum; 			/* Índice usado para las suma de los números impares */
     int index_even_sum; 		/* Índice usado para las suma de los números pares */
     int flag[P]; 			/* Flag para la deteccion de cuando han terminado de PRODUCIR todos los productores */
+    int not_finish;             /* Flag para asegurar la consummición de todos los elementos del buffer de forma global*/
     pthread_mutex_t mutex; 		/* Mutex problema del productor consumidor */
     pthread_mutex_t mutex_odd_sum; 	/* Mutex suma impares */
     pthread_mutex_t mutex_even_sum; 	/* Mutex suma pares  */

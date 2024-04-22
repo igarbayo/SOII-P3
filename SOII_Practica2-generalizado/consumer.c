@@ -57,6 +57,7 @@ int remove_item(int* sum, int id){
  
     mem_map->buffer[mem_map->count-1] = -1; /* Marcamos como eliminado el elemento */
     mem_map->count--; /* Actualizamos el contador */
+    mem_map->not_finish--;
 
     /* Printeamos el buffer para constatar posibles carreras críticas */
     print_bufferc(id);
@@ -81,24 +82,26 @@ void consume_item(int item, int sum, int id){
  * @param args argumentos a pasar con el formato para un hilo
  */
 void* consumer(void* args){
-    int i=0;
     int sum=0;
     int item;
 
     /* Recogemos los argumentos*/
     int id = (int)args;
 
-    while(i < BUC_CONS){
+    /* Mientras no hayan terminado de consumir */
+    while(mem_map->not_finish != 0){
 
         /* Metemos un sleep fuera de la región crítica */
         usleep(rand()%3);
         pthread_mutex_lock(&mem_map->mutex); /* Obtiene acceso exclusivo al buffer */
-        while(mem_map->count == 0) { /* Mientras el buffer esté vacío, bloquéate */
+        while(mem_map->count == 0 && mem_map->not_finish != 0) { /* Mientras el buffer esté vacío, si no has terminado con los items, bloquéate */
             pthread_cond_wait(&mem_map->cond_consumer, &mem_map->mutex);
             /* Incrementa la variable que mide las iteraciones en las que los consumidores no trabajan, por estar bloqueados */
             trabajoC++;
         }
-        item = remove_item(&sum, id); /* Elimina un elemento */
+
+        if(mem_map->not_finish != 0) /* Si no has acabado, elimina un item */
+            item = remove_item(&sum, id); /* Elimina un elemento */
 
         /* Si no hay otro hilo en la región crítica, entra */
         if((pthread_mutex_trylock(&mem_map->mutex_odd_sum)) == 0){
@@ -109,8 +112,6 @@ void* consumer(void* args){
         pthread_cond_signal(&mem_map->cond_producer); /* Despierta al productor */
         pthread_mutex_unlock(&mem_map->mutex); /* Libera el acceso al buffer */
         consume_item(item, sum, id);
-
-        i++; /* Aumentamos el contador */
     }
 
     do{
@@ -122,6 +123,8 @@ void* consumer(void* args){
 
         }
     }while(mem_map->index_odd_sum < TAM); /* Mientras no se haya terminado la suma de los impares */
+
+
 
     printf("Soy el Consumidor %d y he acabado de contribuir. Valor suma impares:\t%d\n", id, mem_map->odd_sum);
 

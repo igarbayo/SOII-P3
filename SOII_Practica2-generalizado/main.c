@@ -50,6 +50,9 @@ int main(int argc, char** argv) {
     /* Para que sume pares = even */
     mem_map->index_even_sum = 0;
 
+    /* Número de items que se producirán en total */
+    mem_map->not_finish = P * BUC_PROD;
+
     /* Inicializamos el buffer a -1 */
     for (i=0; i<N; i++) {
         mem_map->buffer[i]=-1;
