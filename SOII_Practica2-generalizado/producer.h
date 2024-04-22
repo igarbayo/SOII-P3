@@ -15,11 +15,12 @@
 #include "data.h"
 
 
-
 #define get_rand() ((int)rand()%10)
 
-
-
+/** 
+ * Función de comportamiento para un productor
+ * @param args argumentos para la función con formato de hilo
+ */
 void* producer(void* args); /* Ya no hace falta pasarle el tamaño, está declarado aquí */
 
 

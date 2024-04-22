@@ -12,7 +12,10 @@
 #include <pthread.h>
 #include "data.h"
 
-
+/**
+ * Función de comportamiento de un consumidor
+ * @param args argumentos a pasar con el formato para un hilo
+ */
 void* consumer(void* args);
 
 

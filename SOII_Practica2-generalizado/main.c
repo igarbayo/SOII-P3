@@ -7,7 +7,7 @@
 
 mem_shared * mem_map; // Memoria compartida con el mutex y los cond_t
 
-int sleepValues[6];
+int sleepValues[6];   // Array con los valores necesarios para forzar el comportamiento deseado mediante llamadas a sleep()
 int trabajoP;         // Cuenta el número de veces que los productores se quedan esperando (iteraciones no trabajadas)
 int trabajoC;         // Cuenta el número de veces que los consumidores se quedan esperando (iteraciones no trabajadas)
 
@@ -21,6 +21,7 @@ int main(int argc, char** argv) {
     trabajoP=0;
     trabajoC=0;
 
+    /* Si no se pasan 6 valores como argumentos */
     if (argc != 7) {
         fprintf(stderr, "Error: debe incluir 6 argumentos para los sleep:\n"
                        "    · Producción item\n"                            // argv[1] = sleepValues[0]
@@ -32,6 +33,7 @@ int main(int argc, char** argv) {
         exit(EXIT_FAILURE);
     }
 
+    /* Asignamos los argumentos a sleepValues */
     for (k=0; k<6; k++) {
         sleepValues[k]=atoi(argv[k+1]);
     }
