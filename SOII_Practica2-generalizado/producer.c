@@ -13,7 +13,7 @@ void contribute_producer(){
     lim = mem_map->index_even_sum + ((rand()%3)+2);
     i=mem_map->index_even_sum;
 
-    usleep(sleepValues[2]);
+    sleep(sleepValues[2]);
 
     for(i; i < lim && i < TAM; i += 2){
         mem_map->even_sum += mem_map->T[i];
@@ -23,7 +23,7 @@ void contribute_producer(){
 }
 
 int produce_item(){
-    usleep(sleepValues[0]);
+    sleep(sleepValues[0]);
     return(get_rand());
 }
 
@@ -34,7 +34,7 @@ void insert_item(int item, int id) {
     gettimeofday(&tv, NULL);
     srand(tv.tv_usec);
 
-    usleep(sleepValues[1]);
+    sleep(sleepValues[1]);
 
     /* Insertamos en la posición correspondiente */
     mem_map->buffer[mem_map->count] = item;
@@ -56,7 +56,7 @@ void* producer(void* args){
     while(i<BUC_PROD){
 
         /* Metemos un sleep fuera de la región crítica */
-        usleep(rand()%3);
+        sleep(rand()%3);
         item = produce_item(); /* Producimos un entero aleatorio entre 0 y 10 */
 
         /* Contamos lo equivalente antes de bloquearnos */

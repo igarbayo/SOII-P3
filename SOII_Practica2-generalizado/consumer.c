@@ -26,7 +26,7 @@ void contribute_consumer(){
 int remove_item(int* sum, int id){
     int i, item;
 
-    usleep(sleepValues[3]);
+    sleep(sleepValues[3]);
 
     item = mem_map->buffer[mem_map->count-1];
 
@@ -44,7 +44,7 @@ int remove_item(int* sum, int id){
 }
 
 void consume_item(int item, int sum, int id){
-    usleep(sleepValues[4]);
+    sleep(sleepValues[4]);
     printf("(%d) Item extraído:\t %d\t Suma: %d\n",id, item, sum);
 }
 
@@ -60,7 +60,7 @@ void* consumer(void* args){
     while(mem_map->not_finish != 0){
 
         /* Metemos un sleep fuera de la región crítica */
-        usleep(rand()%3);
+        sleep(rand()%3);
 
         /* Contamos lo equivalente antes de bloquearnos */
         if(mem_map->count == 0)
@@ -68,10 +68,6 @@ void* consumer(void* args){
 
         sem_wait(mem_map->full); /* Down a full. Si esta vacío, se bloquea antes de bloquear el mutex. */
         pthread_mutex_lock(&mem_map->mutex); /* Obtiene acceso exclusivo al buffer */
-
-       // while(mem_map->count == 0 && mem_map->not_finish != 0) {
-        //    trabajoC++;
-       // }
 
         if(mem_map->not_finish != 0)
             item = remove_item(&sum, id); /* Elimina un elemento */
@@ -84,12 +80,6 @@ void* consumer(void* args){
         }
 
         pthread_mutex_unlock(&mem_map->mutex); /* Libera el acceso al buffer */
-
-        /* Si no quedan elementos por consumir, sal antes de quedarte bloqueado en el empty*/
-       // if(mem_map->not_finish == 0){
-         //   printf("Soy el hilo %d y voy a ejecutar el break\n", id);
-          //  break;
-       // }
 
         sem_post(mem_map->empty); /* Up de empty. Marcamos que hemos consumido un elemento */
 
